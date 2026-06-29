@@ -1,0 +1,7 @@
+.git
+.idea
+__MACOSX
+*.db
+storage
+tmp
+.DS_Store
