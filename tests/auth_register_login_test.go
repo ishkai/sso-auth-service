@@ -84,6 +84,72 @@ func TestRegisterLogin_DuplicatedRegistration(t *testing.T) {
 	assert.ErrorContains(t, err, "user already exists")
 }
 
+func TestLogin_WrongPassword_ExistingUser(t *testing.T) {
+	ctx, st := suite.New(t)
+
+	email := gofakeit.Email()
+	pass := randomFakePassword()
+	wrongPass := randomFakePassword()
+
+	respReg, err := st.AuthClient.Register(ctx, &ssov1.RegisterRequest{
+		Email:    email,
+		Password: pass,
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, respReg.GetUserId())
+
+	respLogin, err := st.AuthClient.Login(ctx, &ssov1.LoginRequest{
+		Email:    email,
+		Password: wrongPass,
+		AppId:    appID,
+	})
+	require.Error(t, err)
+	assert.Empty(t, respLogin.GetToken())
+	assert.Contains(t, err.Error(), "invalid email or password")
+}
+
+func TestLogin_AppNotFound(t *testing.T) {
+	ctx, st := suite.New(t)
+
+	email := gofakeit.Email()
+	pass := randomFakePassword()
+
+	respReg, err := st.AuthClient.Register(ctx, &ssov1.RegisterRequest{
+		Email:    email,
+		Password: pass,
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, respReg.GetUserId())
+
+	_, err = st.AuthClient.Login(ctx, &ssov1.LoginRequest{
+		Email:    email,
+		Password: pass,
+		AppId:    emptyAppID,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "app")
+}
+
+func TestIsAdmin_DefaultUserIsNotAdmin(t *testing.T) {
+	ctx, st := suite.New(t)
+
+	email := gofakeit.Email()
+	pass := randomFakePassword()
+
+	respReg, err := st.AuthClient.Register(ctx, &ssov1.RegisterRequest{
+		Email:    email,
+		Password: pass,
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, respReg.GetUserId())
+
+	respAdmin, err := st.AuthClient.IsAdmin(ctx, &ssov1.IsAdminRequest{
+		UserId: respReg.GetUserId(),
+	})
+	require.NoError(t, err)
+	assert.False(t, respAdmin.IsAdmin)
+}
+
 func TestRegister_FailCases(t *testing.T) {
 	ctx, st := suite.New(t)
 
